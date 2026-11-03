@@ -25,6 +25,7 @@ from typing import Any, Optional
 from app.core.research import RESEARCH_ROOT
 from app.schemas.benchmark import BenchmarkRequest
 from app.schemas.generation import GenerateRequest
+from app.services.experiment_store import INTERRUPTED
 
 log = logging.getLogger("ncm.bench")
 
@@ -174,6 +175,13 @@ class BenchmarkStore:
         d["runs"] = self.runs(bid)
         d["summary"] = summarize(d["runs"])
         return d
+
+    def recover_interrupted(self) -> list[str]:
+        with self._conn() as c:
+            ids = [r["id"] for r in c.execute("SELECT id FROM benchmarks WHERE status IN ('queued', 'running')")]
+        for bid in ids:
+            self.update(bid, status="failed", error=INTERRUPTED)
+        return ids
 
     def list(self, limit: int = 50) -> list[dict[str, Any]]:
         with self._conn() as c:

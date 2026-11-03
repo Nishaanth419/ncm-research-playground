@@ -104,7 +104,12 @@ export const usePlayground = create<PlaygroundState>((set, get) => ({
         if (ev.type === 'generation.completed') void finish(id)
       },
       onClose: (code) => {
-        if (code === 4404) set({ status: 'failed', error: 'experiment not found' })
+        if (get().experimentId !== id) return
+        const st = get().status
+        if (st === 'completed' || st === 'failed') return
+        // completion is fetched asynchronously after generation.completed
+        if (get().events.some((e) => e.type === 'generation.completed')) return
+        set({ status: 'failed', error: code === 4404 ? 'experiment not found' : 'connection to the backend closed before the run finished' })
       },
     })
 

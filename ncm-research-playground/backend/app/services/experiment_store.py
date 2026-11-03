@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+INTERRUPTED = "interrupted: the server restarted before this run finished"
+
 JSON_FIELDS = ("request", "outputs", "timing", "trace", "metrics", "events")
 SUMMARY_FIELDS = ("id", "created_at", "finished_at", "model", "status", "error", "request", "outputs", "timing",
                   "metrics", "events")
@@ -73,6 +75,23 @@ class ExperimentStore:
         with self._conn() as c:
             row = c.execute(f"SELECT {field} FROM experiments WHERE id = ?", (eid,)).fetchone()
         return json.loads(row[0]) if row and row[0] is not None else None
+
+    def recover_interrupted(self) -> list[str]:
+        """Mark runs a previous server process left queued/running as failed.
+
+        Their work queue lived in memory, so they can never finish. A final
+        `generation.failed` event (flagged `recovered`) is appended so stream
+        clients get a terminal event instead of waiting forever.
+        """
+        with self._conn() as c:
+            rows = c.execute("SELECT id, events FROM experiments WHERE status IN ('queued', 'running')").fetchall()
+        for row in rows:
+            events = json.loads(row["events"]) if row["events"] else []
+            events.append({"type": "generation.failed", "experiment_id": row["id"], "seq": len(events),
+                           "t": events[-1]["t"] if events else 0.0, "error": INTERRUPTED,
+                           "error_type": "Interrupted", "recovered": True})
+            self.update(row["id"], status="failed", error=INTERRUPTED, events=events)
+        return [r["id"] for r in rows]
 
     def list(self, limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
         fields = ("id", "created_at", "finished_at", "model", "status", "error", "request", "timing")

@@ -264,8 +264,8 @@ export function Benchmarks() {
                   <KV k="sampling" v="checkpoint defaults (T=1, no top-k / top-p)" />
                   <KV k="timing" v="device-synced, excludes load, no trace" />
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" render={<a href={csvUrl.benchmarkSummary(rec.id)} download />}><Download />summary.csv</Button>
-                    <Button variant="outline" size="sm" render={<a href={csvUrl.benchmarkRuns(rec.id)} download />}><Download />runs.csv</Button>
+                    <Button variant="outline" size="sm" nativeButton={false} render={<a href={csvUrl.benchmarkSummary(rec.id)} download />}><Download />summary.csv</Button>
+                    <Button variant="outline" size="sm" nativeButton={false} render={<a href={csvUrl.benchmarkRuns(rec.id)} download />}><Download />runs.csv</Button>
                   </div>
                 </Panel>
               </div>

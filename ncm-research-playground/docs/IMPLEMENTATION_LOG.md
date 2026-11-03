@@ -364,3 +364,29 @@ cd frontend && npm run dev   # http://localhost:5173
   - Benchmarks, History and Overview have no horizontal overflow at 375 px.
 
 **Next: Milestone 11.** Test, document and polish: top-level README, final pass over error states, a full regression run.
+
+## Milestone 11: Test, document and polish (2026-11-03), done
+
+**Failure-path audit**
+- Malformed JSON, an empty XSum prompt, an out-of-range `example_index` and unknown ids all return specific 4xx messages (no change needed).
+- **Fixed: runs interrupted by a server restart stayed `queued`/`running` forever.** The work queue is in memory, so they could never finish, and clients streaming them never got a terminal event.
+  - `ExperimentStore.recover_interrupted()` and `BenchmarkStore.recover_interrupted()` run at startup and mark such runs `failed` with the reason.
+  - For experiments they append a final `generation.failed` event flagged `recovered: true` (a server note, not a model event), so the WebSocket replay ends cleanly.
+  - Test: `tests/test_recovery.py`.
+- **Fixed: a WebSocket closing before `generation.completed/failed`** (for example, the backend dying mid-run) left the Playground and Comparison "running". Both now fail the run with "connection to the backend closed before the run finished".
+- **Fixed: Base UI warnings for `Button` rendering `<a>`/`<Link>`** (download and navigation buttons in Benchmarks and History). Set `nativeButton={false}` so links keep link semantics.
+
+**Documentation**
+- `README.md`: what each section shows; results on this machine; how faithfulness to the official code is kept; verified setup commands with pinned commit and revisions; run and environment variables; tests; API; limitations.
+- `backend/requirements.txt`: direct dependencies pinned to the tested versions (`uv pip install --dry-run` against the venv reports no changes).
+
+**Regression**
+- Backend `pytest -q`: **66 passed** (unit, API contracts and real-model integration, including exact equality with official outputs for TinyStories, XSum and WMT14).
+- Frontend: `tsc -b` clean; `npm test` **13 passed**; `npm run build` OK; oxlint 0 warnings outside the generated shadcn files.
+- Browser smoke test after a backend restart: all 8 routes render, and a fresh tab across every route plus the History detail view logs **no console errors**.
+- `research-ncm/` is at `c70274273f489abc73832b2b98584a8483b6b203` with a clean `git status`: the official implementation was never modified.
+
+**Open items (not done)**
+- MPS shim for non-divisible area pooling (decision 2 in ASSESSMENT.md: "CPU now, MPS shim later").
+- Full XSum (11,334) and WMT14 (3,003) metric evaluations; only 4-item exact-match smoke tests were run on CPU.
+- Benchmarks for conditional models (would need a fixed prompt set, e.g. the first N official test items).

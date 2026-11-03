@@ -64,7 +64,7 @@ export function History() {
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => void load()}><RefreshCw />Refresh</Button>
-            <Button variant="outline" size="sm" render={<a href={csvUrl.experiments()} download />}><Download />experiments.csv</Button>
+            <Button variant="outline" size="sm" nativeButton={false} render={<a href={csvUrl.experiments()} download />}><Download />experiments.csv</Button>
           </>
         }
       />
@@ -115,8 +115,8 @@ export function History() {
                 <div className="flex flex-wrap gap-2">
                   {open.request.include_trace !== false && open.status === 'completed' && !open.model.startsWith('ar-') && (
                     <>
-                      <Button variant="outline" size="sm" render={<Link to={`/concepts?id=${open.id}`} />}>Concept Explorer <ArrowRight /></Button>
-                      <Button variant="outline" size="sm" render={<Link to={`/timeline?id=${open.id}`} />}>Timeline <ArrowRight /></Button>
+                      <Button variant="outline" size="sm" nativeButton={false} render={<Link to={`/concepts?id=${open.id}`} />}>Concept Explorer <ArrowRight /></Button>
+                      <Button variant="outline" size="sm" nativeButton={false} render={<Link to={`/timeline?id=${open.id}`} />}>Timeline <ArrowRight /></Button>
                     </>
                   )}
                   <Button variant="outline" size="sm" onClick={() => void doRerun(open)} disabled={rerun?.from === open.id && !rerun.id && !rerun.error}>

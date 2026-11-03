@@ -65,13 +65,17 @@ export function streamExperiment(
 export async function runExperiment(body: GenerateRequest, onEvent: (e: GenEvent) => void): Promise<ExperimentRecord> {
   const { id } = await api.createExperiment(body)
   await new Promise<void>((resolve, reject) => {
+    let settled = false
     const close = streamExperiment(id, {
       onEvent: (e) => {
         onEvent(e)
-        if (e.type === 'generation.completed') { close(); resolve() }
-        if (e.type === 'generation.failed') { close(); reject(new Error(e.error ?? 'generation failed')) }
+        if (e.type === 'generation.completed') { settled = true; close(); resolve() }
+        if (e.type === 'generation.failed') { settled = true; close(); reject(new Error(e.error ?? 'generation failed')) }
       },
-      onClose: (code) => { if (code === 4404) reject(new Error('experiment not found')) },
+      onClose: (code) => {
+        if (settled) return
+        reject(new Error(code === 4404 ? 'experiment not found' : 'connection to the backend closed before the run finished'))
+      },
     })
   })
   return api.experiment(id)

@@ -35,6 +35,9 @@ def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None
     store, hub = ExperimentStore(settings.db_path), EventHub()
     service = ExperimentService(runner, store, hub)
     bench_store = BenchmarkStore(settings.db_path)
+    recovered = store.recover_interrupted() + bench_store.recover_interrupted()
+    if recovered:
+        log.warning("marked %d interrupted run(s) as failed: %s", len(recovered), ", ".join(r[:8] for r in recovered))
     # shares the experiment worker: benchmarks never overlap other generations
     bench = BenchmarkService(runner, bench_store, service.executor, settings.device)
 
