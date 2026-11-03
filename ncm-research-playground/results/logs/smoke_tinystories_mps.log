@@ -1,0 +1,25 @@
+VQVAE, Total parameter count: 36.43M
+VQVAE, Non embedding parameter count: 33.24M
+NCP Transformer, Total parameter count: 88.61M
+NCP Transformer, Non embedding parameter count: 88.30M
+loaded on mps in 1.7s; generator params=88.6M; levels=[1, 8, 16, 24, 32, 40, 52, 64, 76, 92, 108, 128]
+Traceback (most recent call last):
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/experiments/smoke_tinystories.py", line 67, in <module>
+    g = net.generate(l0, x, temperature=float(G.temperature), top_k=int(G.top_k),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 158, in no_grad
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/experiments/../research-ncm/models/next_concept.py", line 665, in generate
+    z_hat, x = vq.get_next_autoregressive_input(level_idx, z_hat, z_q_level)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 158, in no_grad
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/experiments/../research-ncm/models/quant.py", line 703, in get_next_autoregressive_input
+    return z_hat, (F.interpolate(
+                   ^^^^^^^^^^^^^^
+  File "/Users/nishaanth/Desktop/NCM/ncm-research-playground/.venv/lib/python3.12/site-packages/torch/nn/functional.py", line 5265, in interpolate
+    return adaptive_avg_pool1d(input, output_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Adaptive pool MPS: input sizes must be divisible by output sizes. Non-divisible input sizes are not implemented on MPS device yet. For now, you can manually transfer tensor to cpu in this case. Please refer to [this issue](https://github.com/pytorch/pytorch/issues/96056)

@@ -1,0 +1,41 @@
+VQVAE, Total parameter count: 36.43M
+VQVAE, Non embedding parameter count: 33.24M
+NCP Transformer, Total parameter count: 88.61M
+NCP Transformer, Non embedding parameter count: 88.30M
+loaded on cpu in 0.8s; generator params=88.6M; levels=[1, 8, 16, 24, 32, 40, 52, 64, 76, 92, 108, 128]
+codes shape=(4, 641) (sum of levels=641); batch of 4 in 770 ms (timed)
+
+=== sample 0 final ===
+
+One day, a little boy named Tim found a shiny stone in the park. He was very happy. He showed to his friend, Sue. Sue looked at the stone. She said, "Oh, Tim, that is a silly stone too!"
+But Tim thought it was a bad stone. He took a cut away and felt sad. He wanted to fix the shiny stone for his pocket Sue of the store before he could have it too. They both went to the store to the stone.
+At the store, Tim and Sue were very sad. They did not pay any money for the stone. They decided the stone nice
+
+=== sample 1 final ===
+
+One day, a big heavy bear named Bobo went on a trip. Bobo was very happy. He wanted to find something to play with his friends. But he was not heavy, so he went on the trip.
+One day, Bobo saw a broken bird on the ground. He felt sad for the dirty bird. He thought of a plan. "How I spray water from the bird?" he asked his friends and everyone to help. So, Bobo found a big leaf and poured the water on the bird.
+The water got off the bird, changed into it change! Now it was.! Now, Bobo and his gone
+
+=== sample 2 final ===
+
+Once upon a time, there was a little boy named Tim. Tim had a drawer. Inside the cabinet, there were many toys. There were many toys, but one box was not boring. He did not know what was in the box.
+Tim went downstairs to look at the box. He opened the box. Inside the box, he saw a big pile of old toys. Tim was very happy. He went to play with the cars and trucks. He thought about that the box was boring. So, he decided to clean up. After playing in Tim the toys, Tim realized that it was not so boring anymore. He
+
+=== sample 3 final ===
+
+Once upon a time, there was a little girl named Lucy. She had a fancy blouse that she loved to wear. One day, she went out to play with her friends. Lucy wanted to be with her friends, so she ran to say hello. But, the bird did not listen to her friend, but it didn't talk back. Then, Lucy felt a sharp pain in her blouse. She tried to fit it in, but she could could not catch it. Lucy felt sad and did not know what to do. She didn't know why. Then Lucy went to her mom and asked for help. Her mom said,
+
+=== sample 0, official per-level decodes (decode_multiscales) ===
+[L00 n=  1] '.'
+[L01 n=  8] '.. ".. was..'
+[L02 n= 16] 'One the.. was that. before felt started not They. the..'
+[L03 n= 24] 'One named the and.. and " is a it He felt wanted for before the They\nAt were cat. they'
+[L04 n= 32] 'One little the the. pretty.. photo said a bug a Amy bad. He He to for of could. They.At, and The give. the'
+[L05 n= 40] 'One a named the the. so showed friend. photo saidOh a a a Amy it bad. was. wanted the the of he it They both.\n the and were The not home they the'
+[L06 n= 52] 'One, little Tim shiny in park She happy showed to Sue Sue the smiled saidOh, a a a Tim the a. took and felt He to the and to of he have. both the the.At store a'
+[L07 n= 64] '\n day a boy found shiny in the. was happy showed his,. looked the and She " no, is silly stone!" Tim thought a stone. took this felt. He fix shiny skull to of t'
+[L08 n= 76] '\n day a little named found a stone the park He so happy She it friend, Sue looked at photo She, ",, that a silly stone!" Tim thought was bad stone He took big a'
+[L09 n= 92] '\nOne, little little named found a stone in the park He was happy. showed it friend, Sue Sue looked at photo and said said " no, that is a stupid stone!" Tim Tim'
+[L10 n=108] '\nOne day, little boy named found found a stone in the park. She very happy. showed it his, Sue. Sue looked the photo and She She,Oh no,, that a silly stupid sto'
+[L11 n=128] '\nOne day, a little boy named Tim found a shiny stone in the park. He was very happy. He showed to his friend, Sue. Sue looked at the stone. She said, "Oh, Tim, '

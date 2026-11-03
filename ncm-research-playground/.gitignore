@@ -1,0 +1,11 @@
+# official implementation is cloned at a pinned SHA (see docs/ASSESSMENT.md), not vendored
+research-ncm/
+.venv/
+__pycache__/
+*.pyc
+results/raw/
+*.sqlite
+*.db
+node_modules/
+frontend/dist/
+.env
