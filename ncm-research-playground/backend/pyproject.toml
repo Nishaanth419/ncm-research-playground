@@ -1,0 +1,16 @@
+[project]
+name = "ncm-playground-backend"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "omegaconf",
+    "pydantic>=2.7",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "model: needs downloaded NCM checkpoints under research-ncm/artifacts (skipped otherwise)",
+]

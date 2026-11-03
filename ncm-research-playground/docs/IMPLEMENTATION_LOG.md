@@ -61,3 +61,33 @@
 - Per-level timings in that log were taken while the eval ran concurrently and are not benchmark numbers.
 
 **Next: Milestone 4.** Build `backend/app/services/trace_collector.py` (test-first) from the probe, with the JSON trace schema: codes, per-level timing, latent scalars, codebook stats, and official per-level decodes.
+
+## Milestone 4: Instrument real intermediate representations (2026-11-03), done
+
+**Files**
+- `backend/pyproject.toml`: pytest config; `model` marker for tests that need checkpoints.
+- `backend/app/core/research.py`: `load_bundle(task, device)` mirrors `eval_shard.py` loading; `missing_files(task)` checks availability; `NCMBundle.resolve()` reads `generator.pt:inference.*` references.
+- `backend/app/schemas/trace.py`: Pydantic `Trace`, `LevelTrace`, `CodebookStats`, `LatentSummary` (ints, floats and strings only).
+- `backend/app/services/trace_collector.py`: `TraceCollector` context manager, `codebook_stats`, `latent_summary`.
+- `backend/tests/test_trace_collector.py`: 10 unit tests with a fake model (no checkpoints).
+- `backend/tests/test_trace_real_model.py`: real TinyStories trace on CPU.
+
+**How the collector works**
+- It wraps instance methods `net._sample_level` and `vq.get_next_autoregressive_input` and restores them on exit, including on exceptions.
+- `level_started` / `level_completed` events fire from those real calls, with device-synchronised timing.
+- With CFG, the doubled batch is sliced back to B.
+- Latent statistics use the first `latent_samples` (default 8) samples, to bound memory (a full batch of latents is ~280 MB).
+- Codebook statistics cover the whole batch.
+- Codes and per-level decodes are kept for the first `max_detail_samples` (default 8) samples.
+
+**Verified on the real model** (4 samples, CPU)
+- 11 transformer passes; codes identical to `generate()`; 23 events.
+- Trace JSON is 37 KB.
+- Per-level time grows with level length (21 ms at 8 codes → 120 ms at 128 codes, batch 4).
+- Unique codes grow from 32 to 312 and entropy from 5.0 to 8.0 bits.
+- Input-latent cosine to the final latent goes from 0.33 to 0.89.
+
+**Tests**
+- `cd backend && ../.venv/bin/pytest -q`: 11 passed.
+
+**Next: Milestone 5.** FastAPI `NCMRunner` (lazy-load bundles, keep them in memory; unconditional TinyStories plus prompt-driven XSum/WMT14 using `eval_shard.py`'s prefix and `pick_tokens` final decoding) and `/api/generate`, `/api/models`.
