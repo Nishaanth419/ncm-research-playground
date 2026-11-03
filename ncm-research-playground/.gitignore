@@ -9,3 +9,4 @@ results/raw/
 node_modules/
 frontend/dist/
 .env
+results/official_eval/**/*.pkl
