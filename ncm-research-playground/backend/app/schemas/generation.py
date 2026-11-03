@@ -36,6 +36,9 @@ class ModelInfo(BaseModel):
     prefix_tokens: int
     n_examples: int = Field(description="official test-set items addressable by example_index")
     defaults: SamplingParams
+    tokenizer: str = ""
+    training_data: str = ""
+    notes: list[str] = Field(default_factory=list)
 
 
 class GenerateRequest(BaseModel):
@@ -46,6 +49,8 @@ class GenerateRequest(BaseModel):
     seed: int = Field(0, ge=0, le=2**31 - 1)
     sampling: SamplingOverrides = Field(default_factory=SamplingOverrides)
     include_trace: bool = True
+    tag: Optional[str] = Field(None, max_length=64, description="free label, e.g. a comparison group id")
+    warmup: bool = Field(False, description="run one untimed pass with the same batch first (outputs are unchanged)")
 
     @model_validator(mode="after")
     def _one_input(self) -> "GenerateRequest":
@@ -59,6 +64,14 @@ class Timing(BaseModel):
     generate_s: float = Field(description="net.generate, device-synchronised")
     decode_s: float = Field(description="latent -> tokens -> text")
     total_s: float = Field(description="generate_s + decode_s (excludes load_s)")
+    first_output_s: Optional[float] = Field(
+        None, description="autoregressive: first generated token; NCM: complete text (only exists after the final level and decode)")
+
+
+class MemoryStats(BaseModel):
+    device: str
+    peak_bytes: Optional[int] = None
+    note: str = ""
 
 
 class GenerateResponse(BaseModel):
@@ -76,3 +89,8 @@ class GenerateResponse(BaseModel):
     levels: list[int]
     timing: Timing
     trace: Optional[Trace]
+    output_tokens: list[int] = Field(default_factory=list, description="generated tokens per sample, in the model's own tokenizer, up to EOS")
+    tokenizer: str = ""
+    output_entropy_own: list[float] = Field(
+        default_factory=list, description="unigram entropy (nats) over the model's own tokens of each output, as in eval_merge.py")
+    memory: Optional[MemoryStats] = None

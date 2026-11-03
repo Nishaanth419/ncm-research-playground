@@ -49,6 +49,19 @@ def get_metrics(eid: str, request: Request) -> dict[str, Any]:
     return rec["metrics"]
 
 
+@router.post("/experiments/{eid}/quality")
+def score_quality(eid: str, request: Request) -> dict[str, Any]:
+    """Score a completed experiment's outputs with the official gen-PPL judge; stored in metrics.quality."""
+    rec = _record(request, eid)
+    if rec["status"] != "completed" or not rec["outputs"]:
+        raise HTTPException(409, f"experiment {eid} has no outputs to score (status {rec['status']})")
+    q = request.app.state.scorer.score(rec["outputs"])
+    metrics = dict(rec["metrics"] or {})
+    metrics["quality"] = q
+    request.app.state.store.update(eid, metrics=metrics)
+    return q
+
+
 @router.websocket("/stream/{eid}")
 async def stream(ws: WebSocket, eid: str) -> None:
     await ws.accept()

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { Sidebar } from '@/components/layout/Sidebar'
+import { Comparison } from '@/pages/Comparison'
 import { ConceptExplorer } from '@/pages/ConceptExplorer'
 import { Overview } from '@/pages/Overview'
 import { Placeholder } from '@/pages/Placeholder'
@@ -32,9 +33,7 @@ export default function App() {
           <Route path="/playground" element={<Playground />} />
           <Route path="/concepts" element={<ConceptExplorer />} />
           <Route path="/timeline" element={<Timeline />} />
-          <Route path="/compare" element={<Placeholder title="Model Comparison" milestone={9}
-            description="NCM against an autoregressive baseline, side by side."
-            detail="Needs the autoregressive baseline runner, which is not implemented yet." />} />
+          <Route path="/compare" element={<Comparison />} />
           <Route path="/benchmarks" element={<Placeholder title="Benchmarks" milestone={10}
             description="Reproducible latency, throughput and memory measurements."
             detail="Warm-up runs, repeated measurements, medians and percentiles, CSV export. No benchmark data exists yet." />} />

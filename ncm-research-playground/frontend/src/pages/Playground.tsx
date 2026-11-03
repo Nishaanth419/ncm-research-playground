@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { EventLog } from '@/features/playground/EventLog'
+import { StepProgress } from '@/features/compare/StepProgress'
 import { LevelStrip } from '@/features/playground/LevelStrip'
 import { ParamControl } from '@/features/playground/ParamControl'
 import { fmtSeconds } from '@/lib/format'
@@ -31,7 +32,7 @@ const PROMPT_LABEL = { article: 'News article (first 512 GPT-2 tokens are used)'
 
 export function Playground() {
   const models = useModels((s) => s.models)
-  const { form, setForm, setSampling, resetSampling, status, events, levels, record, error, run, experimentId } = usePlayground()
+  const { form, setForm, setSampling, resetSampling, status, events, levels, steps, record, error, run, experimentId } = usePlayground()
   const model = useMemo(() => models.find((m) => m.id === form.model), [models, form.model])
 
   useEffect(() => {
@@ -66,8 +67,12 @@ export function Playground() {
               <div className="mt-3 space-y-2">
                 <p className="text-xs leading-relaxed text-muted-foreground">{model.description}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="outline" className="font-normal">{model.levels.length} levels</Badge>
-                  <Badge variant="outline" className="font-normal">{model.levels.reduce((a, b) => a + b, 0)} codes</Badge>
+                  {model.family === 'ncm' ? (
+                    <>
+                      <Badge variant="outline" className="font-normal">{model.levels.length} levels</Badge>
+                      <Badge variant="outline" className="font-normal">{model.levels.reduce((a, b) => a + b, 0)} codes</Badge>
+                    </>
+                  ) : <Badge variant="outline" className="border-ar/40 font-normal text-ar">autoregressive baseline</Badge>}
                   <Badge variant="outline" className="font-normal">{model.output_tokens} output tokens</Badge>
                   {!model.available && <Badge variant="destructive">checkpoint missing</Badge>}
                 </div>
@@ -162,17 +167,21 @@ export function Playground() {
               <span>{STATUS_TEXT[status]}</span>
               {error && <span className="truncate text-destructive">· {error}</span>}
             </div>
-            {model ? <LevelStrip schedule={model.levels} levels={levels} /> : <div className="h-12" />}
+            {model?.family === 'autoregressive'
+              ? <StepProgress steps={steps} max={model.output_tokens} done={status === 'completed'} />
+              : model ? <LevelStrip schedule={model.levels} levels={levels} /> : <div className="h-12" />}
             <p className="mt-3 text-xs text-muted-foreground">
-              Levels run sequentially, left to right. Each cell is one transformer step that predicts all of that level's codes at once; width is proportional to the level's code count.
-              {model?.conditional ? ' Level 0 is predicted by the transformer and its time includes encoding the input.' : ' Level 0 is drawn from the checkpoint’s unigram, as in the official eval.'}
+              {model?.family === 'autoregressive'
+                ? 'Autoregressive baseline: one sequential forward pass per generated token (KV cache on), stopping at EOS.'
+                : <>Levels run sequentially, left to right. Each cell is one transformer step that predicts all of that level's codes at once; width is proportional to the level's code count.
+                  {model?.conditional ? ' Level 0 is predicted by the transformer and its time includes encoding the input.' : ' Level 0 is drawn from the checkpoint’s unigram, as in the official eval.'}</>}
             </p>
           </Panel>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
             <Panel
               title="Outputs"
-              meta={record && experimentId ? (
+              meta={record && experimentId && model?.family === 'ncm' ? (
                 <span className="flex items-center gap-3">
                   <Link to={`/concepts?id=${experimentId}`} className="text-primary hover:underline">concepts →</Link>
                   <Link to={`/timeline?id=${experimentId}`} className="text-primary hover:underline">timeline →</Link>

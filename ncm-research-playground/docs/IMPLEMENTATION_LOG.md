@@ -250,3 +250,61 @@ cd frontend && npm run dev   # http://localhost:5173
   - Both fit 375 px with no horizontal overflow.
 
 **Next: Milestone 9.** Autoregressive baseline runner and the Model Comparison page.
+
+## Milestone 9: Autoregressive baseline and Model Comparison (2026-11-03), done
+
+**Baseline (user choice):** `roneneldan/TinyStories-33M` @ `2ad0a164221b7c4d21cac7c46aec74f6f98dbfc8`.
+- GPT-Neo causal LM: 4 layers, hidden size 768, GPT-2 BPE vocabulary of 50,257, 68.5M parameters including embeddings.
+- Trained on the same TinyStories corpus as NCM-TinyStories, in an independent run. Downloaded once into the HF cache (291 MB `pytorch_model.bin`) and loaded with `local_files_only=True`.
+- Loading reports `attn.attention.bias/masked_bias` as UNEXPECTED keys: these are legacy causal-mask buffers in the 2023 checkpoint, not weights.
+
+**Backend**
+- `services/ar_runner.py` `AutoregressiveRunner`:
+  - unconditional from BOS (= EOS 50256, mirroring NCM starting from EOS); up to 128 new tokens; stops at EOS; KV cache on.
+  - Real `generation.step_completed` events come from a transformers streamer (one `put` per decoding step).
+  - Records time to first token, and own-tokenizer entropy as defined in `eval_merge.py`.
+- `services/registry.py` `ModelRegistry`: dispatches by model id; `/api/models` lists NCM and AR models together.
+- `services/quality.py` `QualityScorer`: calls the official `research-ncm/evaluation/gen_ppl.py::generation_perplexity` with GPT-2-large (the configs' `eval.ref_model`).
+  - `corpus_ppl` = the official `mean_ppl`.
+  - Entropy is also reported over the judge's GPT-2 tokens, for cross-tokenizer comparison.
+  - Empty outputs are not scored.
+- `POST /api/experiments/{id}/quality` scores the stored outputs and saves the result under `metrics.quality`.
+- `services/memory.py`: CUDA reports peak bytes; MPS reports driver allocation (labelled not-a-peak); CPU reports `null` with the reason.
+- New request fields:
+  - `tag` (comparison group);
+  - `warmup` (one untimed pass with the same batch, then reseed; tests show outputs are unchanged, including the official NCM seed-42 stories).
+- New response/metrics fields: `output_tokens`, `tokenizer`, throughput (tokens/s in the model's own tokenizer, words/s), `first_output_s`, `output_entropy_own`, `memory`, `warmup`, `tag`.
+  - NCM's `first_output_s` = complete text, since text exists only after the final level and decode.
+
+**Frontend**
+- `pages/Comparison.tsx` + `store/comparison.ts`:
+  - shared seed, batch and sampling; runs NCM then the baseline back to back on the single worker, each with `warmup: true`;
+  - live level strip vs. token step bar;
+  - GPT-2-large scoring of both;
+  - grouped measurement table (only like-for-like rows are colour-coded as better; others greyed);
+  - side-by-side outputs with per-sample PPL.
+- `lib/compare.ts` (`summarize`, `caveats`) + 6 vitest tests. Caveats are generated from the actual metadata: parameter counts, tokenizers, training data, decoding-setting or batch mismatch, length policy, the meaning of "first output", warm-up / single run / device, and the note that published H100 speedups are not comparable.
+- Playground accepts the baseline (`StepProgress` instead of the level strip; no concept/timeline links, since the baseline has no trace).
+
+**Measured on this machine** (CPU, 4 samples, seed 0, T=1, no top-k/top-p, warm-up on; one run each, not a benchmark)
+
+| | ncm-tinystories | ar-tinystories-33m |
+|---|---|---|
+| params | 125.0M (generator 88.6M + VQ-VAE 36.4M) | 68.5M |
+| sequential forward passes | 11 | 128 |
+| generate | 797 ms | 1.58 s |
+| first output | 816 ms (complete text) | 11.6 ms (first token) |
+| words/s | 500 | 259 |
+| gen-PPL (GPT-2-large) | 13.48 | 9.74 |
+| entropy (judge tokens) | 4.056 | 3.993 |
+
+- Without warm-up, the first baseline call after loading measured 2.65 s generate and 974 ms to first token. This is why the comparison always warms up.
+- A repeated warm baseline run took 1.24 s generate vs. 1.58 s here: single-run variance, to be handled with medians in Milestone 10.
+
+**Verification**
+- Backend `pytest -q`: 52 passed (adds registry/quality API contracts, AR generation/streaming/seed/warm-up, quality scorer, NCM warm-up equality).
+- Frontend: `tsc` clean, vitest 11 passed, build OK, oxlint 0 warnings outside the generated shadcn files.
+- In-app browser: comparison run end to end on a freshly restarted backend; Comparison and Playground fit 375 px.
+- Not browser-verified: running the baseline from the Playground page (covered by API tests only).
+
+**Next: Milestone 10.** Benchmark workflow (fixed suite, warm-ups, repeated measurements, median/p90/p95, hardware and config capture, SQLite, CSV export) and Experiment History (reopen and replay).

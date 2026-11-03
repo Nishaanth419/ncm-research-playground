@@ -24,7 +24,9 @@ import torch
 from app.core.official import official_pick_tokens, parse_adjacency
 from app.core.research import RESEARCH_ROOT, NCMBundle, config_path, load_bundle, missing_files
 from app.schemas.generation import GenerateRequest, GenerateResponse, ModelInfo, SamplingParams, Timing
+from app.services.ar_runner import unigram_entropy
 from app.services.errors import InvalidRequest, ModelNotFound, ModelUnavailable
+from app.services.memory import read_memory, reset_peak
 from app.services.trace_collector import EventFn, TraceCollector, device_sync
 
 log = logging.getLogger("ncm.runner")
@@ -50,6 +52,10 @@ NCM_MODELS = {
 }
 
 
+TOKENIZER_NAME = {"tinystories": "ncm-bpe (8192)", "xsum": "gpt2 (hf)", "wmt14": "Qwen3-0.6B (hf)"}
+TRAINING_DATA = {"tinystories": "TinyStories", "xsum": "XSum", "wmt14": "WMT14 De-En"}
+
+
 class NCMRunner:
     def __init__(self, device: str = "cpu"):
         self.device = device
@@ -60,6 +66,9 @@ class NCMRunner:
         self._examples: dict[str, tuple[list, list]] = {}
 
     # ---- registry -------------------------------------------------------
+    def owns(self, model_id: str) -> bool:
+        return model_id in NCM_MODELS
+
     def _spec(self, model_id: str) -> ModelSpec:
         if model_id not in NCM_MODELS:
             raise ModelNotFound(f"unknown model {model_id!r}; available: {sorted(NCM_MODELS)}")
@@ -82,7 +91,10 @@ class NCMRunner:
                 missing_files=missing, loaded=b is not None, parameters=params,
                 levels=list(cfg.tokenizer.vqvae.vector_quantizer_config.levels.manual_levels),
                 output_tokens=int(cfg.tokenizer.vqvae.context_length), prefix_tokens=int(cfg.model.prefix_len),
-                n_examples=self._n_examples(spec.task, cfg), defaults=self._defaults(cfg)))
+                n_examples=self._n_examples(spec.task, cfg), defaults=self._defaults(cfg),
+                tokenizer=TOKENIZER_NAME[spec.task], training_data=TRAINING_DATA[spec.task],
+                notes=[f"HazyResearch/ncm checkpoint {spec.task}/ (pinned revision)",
+                       f"fixed {int(cfg.tokenizer.vqvae.context_length)}-token canvas, cut at EOS"]))
         return out
 
     @staticmethod
@@ -195,6 +207,20 @@ class NCMRunner:
         tk, net, vq, B = b.tokenizer, b.net, b.vq, req.num_samples
         eos = tk.pre_tokenizer.eos_token_id
         with self._infer_lock:
+            if req.warmup:  # untimed, untraced pass with the same shapes; then reseed below
+                with torch.no_grad():
+                    torch.manual_seed(req.seed)
+                    wx = (self._prefix(b, spec, req)[0] if conditional else torch.full((B, 1), eos, device=self.device))
+                    wl0 = None
+                    if not conditional and b.resolve(b.cfg.generation.get("level0_unigram")) is not None:
+                        wl0 = torch.multinomial(b.resolve(b.cfg.generation.get("level0_unigram")).float().cpu(),
+                                                B * b.levels[0], replacement=True).view(B, b.levels[0]).to(self.device)
+                    wg = net.generate(wl0, wx, temperature=sp.temperature, top_k=sp.top_k, top_p=sp.top_p,
+                                      cfg_scale=sp.cfg_scale, cfg_null_eos=eos)
+                    _, wzl = vq.idx_to_zhats(wg, return_zlevels=True)
+                    self._picker(b)(tk.vqvae.decoder(wzl[-1]))
+                device_sync(self.device)
+            reset_peak(self.device)
             torch.manual_seed(req.seed)
             if conditional:
                 x, n_prompt, truncated, reference = self._prefix(b, spec, req)
@@ -218,6 +244,8 @@ class NCMRunner:
                 _, zl = vq.idx_to_zhats(g, return_zlevels=True)
                 ids = self._picker(b)(tk.vqvae.decoder(zl[-1])).tolist()
                 outputs = [self._dec(b, r) for r in ids]
+                eos_id = tk.pre_tokenizer.eos_token_id
+                n_tokens = [(r.index(eos_id) if eos_id in r else len(r)) for r in ids]
                 device_sync(self.device)
                 t2 = time.perf_counter()
                 trace = None
@@ -225,11 +253,14 @@ class NCMRunner:
                     trace = tc.build(task=spec.task, final_latent=vq.idx_to_z_q(g),
                                      decoded_levels=tk.decode_multiscales(g, skip_special_tokens=True),
                                      final_texts=outputs, total_seconds=t2 - t0, vocab_sizes=b.vocab_sizes)
-        timing = Timing(load_s=load_s, generate_s=t1 - t0, decode_s=t2 - t1, total_s=t2 - t0)
+        memory = read_memory(self.device)
+        # text exists only once every level is generated and decoded
+        timing = Timing(load_s=load_s, generate_s=t1 - t0, decode_s=t2 - t1, total_s=t2 - t0, first_output_s=t2 - t0)
         log.info("generate model=%s B=%d seed=%d generate_s=%.3f decode_s=%.3f", spec.id, B, req.seed,
                  timing.generate_s, timing.decode_s)
         return GenerateResponse(
             id=uuid.uuid4().hex, model=spec.id, task=spec.task, device=self.device, seed=req.seed,
             sampling=sp, prompt_tokens=n_prompt, prompt_truncated=truncated, reference=reference,
             outputs=outputs, transformer_passes=sum(lv.source == "transformer" for lv in tc.levels),
-            levels=b.levels, timing=timing, trace=trace)
+            levels=b.levels, timing=timing, trace=trace, output_tokens=n_tokens, tokenizer=TOKENIZER_NAME[spec.task],
+            output_entropy_own=[unigram_entropy(tk.pre_tokenizer.encode(o)) for o in outputs], memory=memory)

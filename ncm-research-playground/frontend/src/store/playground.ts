@@ -26,6 +26,7 @@ interface PlaygroundState {
   experimentId: string | null
   events: GenEvent[]
   levels: Record<number, LevelState>
+  steps: number
   record: ExperimentRecord | null
   trace: Trace | null
   error: string | null
@@ -41,7 +42,7 @@ export const usePlayground = create<PlaygroundState>((set, get) => ({
     const idle = !['submitting', 'queued', 'loading-model', 'running'].includes(s.status)
     // results belong to the previous model's level schedule: drop them on switch
     const cleared = switching && idle
-      ? { status: 'idle' as RunStatus, events: [], levels: {}, record: null, trace: null, error: null, experimentId: null }
+      ? { status: 'idle' as RunStatus, events: [], levels: {}, steps: 0, record: null, trace: null, error: null, experimentId: null }
       : {}
     return { form: { ...s.form, ...patch }, ...cleared }
   }),
@@ -52,6 +53,7 @@ export const usePlayground = create<PlaygroundState>((set, get) => ({
   experimentId: null,
   events: [],
   levels: {},
+  steps: 0,
   record: null,
   trace: null,
   error: null,
@@ -72,7 +74,7 @@ export const usePlayground = create<PlaygroundState>((set, get) => ({
     }
     const pending: Record<number, LevelState> = Object.fromEntries(
       levelsSchedule.map((_, i): [number, LevelState] => [i, { status: 'pending', seconds: null }]))
-    set({ status: 'submitting', events: [], levels: pending, record: null, trace: null, error: null, experimentId: null })
+    set({ status: 'submitting', events: [], levels: pending, steps: 0, record: null, trace: null, error: null, experimentId: null })
 
     let id: string
     try {
@@ -96,7 +98,8 @@ export const usePlayground = create<PlaygroundState>((set, get) => ({
           if (ev.type === 'generation.level_completed' && ev.level !== undefined)
             levels[ev.level] = { status: 'done', seconds: ev.seconds ?? null, source: ev.source }
           if (ev.type === 'generation.failed') return { events: [...s.events, ev], status: 'failed', error: ev.error ?? 'failed' }
-          return { events: [...s.events, ev], levels, status }
+          const steps = ev.type === 'generation.step_completed' && ev.step !== undefined ? ev.step : s.steps
+          return { events: [...s.events, ev], levels, status, steps }
         })
         if (ev.type === 'generation.completed') void finish(id)
       },

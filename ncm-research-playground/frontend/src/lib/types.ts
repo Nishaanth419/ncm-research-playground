@@ -25,6 +25,9 @@ export interface ModelInfo {
   prefix_tokens: number
   n_examples: number
   defaults: SamplingParams
+  tokenizer: string
+  training_data: string
+  notes: string[]
 }
 
 export interface GenerateRequest {
@@ -35,6 +38,8 @@ export interface GenerateRequest {
   seed: number
   sampling: Partial<SamplingParams>
   include_trace: boolean
+  tag?: string
+  warmup?: boolean
 }
 
 export interface Timing {
@@ -42,6 +47,21 @@ export interface Timing {
   generate_s: number
   decode_s: number
   total_s: number
+  first_output_s?: number | null
+}
+
+export interface MemoryStats {
+  device: string
+  peak_bytes: number | null
+  note: string
+}
+
+export interface QualityResult {
+  judge: string
+  protocol: string
+  corpus_ppl: number | null
+  n_scored: number
+  per_sample: ({ ppl: number; judge_tokens: number; entropy_judge_tokens: number } | null)[]
 }
 
 export interface CodebookStats {
@@ -95,6 +115,7 @@ export interface GenEvent {
     | 'model.loaded'
     | 'generation.level_started'
     | 'generation.level_completed'
+    | 'generation.step_completed'
     | 'generation.completed'
     | 'generation.failed'
   experiment_id: string
@@ -102,6 +123,7 @@ export interface GenEvent {
   t: number
   replay?: boolean
   level?: number
+  step?: number
   n_codes?: number
   seconds?: number | null
   source?: string
@@ -126,6 +148,15 @@ export interface ExperimentMetrics {
   prompt_tokens: number | null
   prompt_truncated: boolean
   reference: string | null
+  output_tokens: number[]
+  tokenizer: string
+  throughput_tokens_per_s: number | null
+  throughput_words_per_s: number | null
+  output_entropy_own: number[]
+  memory: MemoryStats | null
+  quality: QualityResult | null
+  warmup?: boolean
+  tag?: string | null
 }
 
 export interface ExperimentRecord {

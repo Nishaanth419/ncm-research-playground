@@ -18,13 +18,19 @@ log = logging.getLogger("ncm.api")
 _STATUS = {ModelNotFound: 404, InvalidRequest: 422, ModelUnavailable: 503}
 
 
-def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None) -> FastAPI:
+def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None,
+               scorer: Optional[Any] = None) -> FastAPI:
     settings = settings or Settings()
     logging.basicConfig(level=settings.log_level,
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     if runner is None:
+        from app.services.ar_runner import AutoregressiveRunner
         from app.services.ncm_runner import NCMRunner
-        runner = NCMRunner(device=settings.device)
+        from app.services.registry import ModelRegistry
+        runner = ModelRegistry([NCMRunner(device=settings.device), AutoregressiveRunner(device=settings.device)])
+    if scorer is None:
+        from app.services.quality import QualityScorer
+        scorer = QualityScorer(device=settings.device)
     store, hub = ExperimentStore(settings.db_path), EventHub()
     service = ExperimentService(runner, store, hub)
 
@@ -34,7 +40,7 @@ def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None
         service.shutdown()
 
     app = FastAPI(title="NCM Research Playground", version="0.1.0", lifespan=lifespan)
-    app.state.runner, app.state.settings = runner, settings
+    app.state.runner, app.state.settings, app.state.scorer = runner, settings, scorer
     app.state.store, app.state.hub, app.state.experiments = store, hub, service
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins),
                        allow_methods=["*"], allow_headers=["*"])

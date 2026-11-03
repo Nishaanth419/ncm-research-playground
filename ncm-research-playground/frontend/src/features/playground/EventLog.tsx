@@ -13,6 +13,7 @@ function describe(e: GenEvent): string {
     case 'generation.level_completed': return `L${e.level} · ${e.n_codes} codes · ${e.source}${e.seconds != null ? ` · ${fmtSeconds(e.seconds)}` : ''}`
     case 'generation.completed': return `generate ${fmtSeconds(e.timing?.generate_s)} · decode ${fmtSeconds(e.timing?.decode_s)}`
     case 'generation.failed': return e.error ?? ''
+    case 'generation.step_completed': return `step ${e.step} · ${e.n_tokens} token(s)`
   }
 }
 

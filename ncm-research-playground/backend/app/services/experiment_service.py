@@ -33,7 +33,17 @@ def compute_metrics(resp: GenerateResponse) -> dict[str, Any]:
         "output_chars": [len(o) for o in resp.outputs], "sampling": resp.sampling.model_dump(),
         "prompt_tokens": resp.prompt_tokens, "prompt_truncated": resp.prompt_truncated,
         "reference": resp.reference,
+        "output_tokens": resp.output_tokens, "tokenizer": resp.tokenizer,
+        "throughput_tokens_per_s": sum(resp.output_tokens) / resp.timing.generate_s if resp.timing.generate_s > 0 else None,
+        "throughput_words_per_s": sum(len(o.split()) for o in resp.outputs) / resp.timing.total_s if resp.timing.total_s > 0 else None,
+        "output_entropy_own": resp.output_entropy_own,
+        "memory": resp.memory.model_dump() if resp.memory else None,
+        "quality": None,
     }
+
+
+def with_request_facts(metrics: dict[str, Any], req: GenerateRequest) -> dict[str, Any]:
+    return {**metrics, "warmup": req.warmup, "tag": req.tag}
 
 
 class ExperimentService:
@@ -65,7 +75,7 @@ class ExperimentService:
             self.store.update(
                 eid, status="completed", outputs=resp.outputs, timing=resp.timing.model_dump(),
                 trace=resp.trace.model_dump() if resp.trace is not None else None,
-                metrics=compute_metrics(resp), events=self.hub.history(eid))
+                metrics=with_request_facts(compute_metrics(resp), req), events=self.hub.history(eid))
             log.info("experiment %s completed model=%s total_s=%.3f", eid, req.model, resp.timing.total_s)
         except Exception as e:
             log.exception("experiment %s failed", eid)

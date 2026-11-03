@@ -68,6 +68,13 @@ def test_conditional_examples_match_official(client, task):
     assert tr["transformer_passes"] == len(tr["levels"])
 
 
+def test_warmup_keeps_official_outputs(client):
+    ref = official("tinystories")
+    r = client.post("/api/generate", json={"model": "ncm-tinystories", "num_samples": 4, "seed": 42,
+                                           "warmup": True, "include_trace": False})
+    assert r.json()["outputs"] == ref["hyps"][:4]
+
+
 def test_wmt14_free_text_prompt(client):
     if missing_files("wmt14"):
         pytest.skip("wmt14 missing")
