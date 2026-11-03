@@ -1,7 +1,8 @@
-import pytest
+import os
+import tempfile
 
 
-@pytest.fixture(autouse=True)
-def _isolated_db(tmp_path, monkeypatch):
-    # never write to results/playground.sqlite from tests
-    monkeypatch.setenv("NCM_DB_PATH", str(tmp_path / "test.sqlite"))
+def pytest_configure(config):
+    # Set before any fixture (including module-scoped ones) builds an app,
+    # so tests never write to results/playground.sqlite.
+    os.environ["NCM_DB_PATH"] = os.path.join(tempfile.mkdtemp(prefix="ncm-tests-"), "test.sqlite")

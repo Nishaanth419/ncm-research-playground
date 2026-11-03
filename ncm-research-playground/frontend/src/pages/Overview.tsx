@@ -76,7 +76,7 @@ export function Overview() {
           />
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
           <Panel title="Models" meta="official HazyResearch checkpoints" className="xl:col-span-3" bodyClassName="p-0">
             <div className="divide-y divide-border">
               {models.map((m) => (
@@ -133,7 +133,7 @@ export function Overview() {
           </Panel>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
           <Panel title="Latest experiments" className="xl:col-span-3" bodyClassName="p-0">
             {rows && rows.length > 0 ? (
               <div className="divide-y divide-border">

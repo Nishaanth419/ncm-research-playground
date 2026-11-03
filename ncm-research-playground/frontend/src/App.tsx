@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 
 import { Sidebar } from '@/components/layout/Sidebar'
+import { ConceptExplorer } from '@/pages/ConceptExplorer'
 import { Overview } from '@/pages/Overview'
 import { Placeholder } from '@/pages/Placeholder'
 import { Playground } from '@/pages/Playground'
 import { SettingsPage } from '@/pages/Settings'
+import { Timeline } from '@/pages/Timeline'
 import { useModels } from '@/store/models'
 
 export default function App() {
@@ -28,12 +30,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/playground" element={<Playground />} />
-          <Route path="/concepts" element={<Placeholder title="Concept Explorer" milestone={8}
-            description="Inspect the hierarchy of discrete codes NCM generated, level by level."
-            detail="Level navigation, code-index heatmaps, codebook distributions and per-level decodes, built from the real traces the backend already records." />} />
-          <Route path="/timeline" element={<Placeholder title="Generation Timeline" milestone={8}
-            description="Sequential levels, each predicted in one parallel step."
-            detail="Per-level execution time, code counts and status from recorded generation events." />} />
+          <Route path="/concepts" element={<ConceptExplorer />} />
+          <Route path="/timeline" element={<Timeline />} />
           <Route path="/compare" element={<Placeholder title="Model Comparison" milestone={9}
             description="NCM against an autoregressive baseline, side by side."
             detail="Needs the autoregressive baseline runner, which is not implemented yet." />} />

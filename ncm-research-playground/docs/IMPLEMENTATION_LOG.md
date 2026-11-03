@@ -208,3 +208,45 @@ cd frontend && npm run dev   # http://localhost:5173
 ```
 
 **Next: Milestone 8.** Concept Explorer (level navigation, code-index heatmap, codebook distribution, latent stats, per-level decodes labelled separately from the final penalised decode) and Generation Timeline, both from recorded traces.
+
+## Milestone 8: Concept hierarchy visualisation and Generation Timeline (2026-11-03), done
+
+**Files** (`frontend/src`)
+- `lib/trace.ts`
+  - `timelineSegments(events)`: lays out load / level / decode segments from recorded event timestamps only.
+    - A unigram level 0 is a zero-width marker.
+    - A transformer level 0 (no started event) is placed using its measured `seconds`.
+    - A failed run marks its open level as incomplete.
+  - `codeCounts`, `codeColor` (categorical golden-angle hue: same id gives the same colour; hue carries no similarity meaning).
+- `lib/trace.test.ts`: 5 vitest tests (`npm test`).
+- `hooks/useExperimentTrace.ts`: `?id=`, defaulting to the newest completed traced experiment; loads the record (with events) and the trace. `components/ExperimentPicker.tsx`.
+- `features/concepts/`
+  - `HierarchyGrid`: one full-width row per level, cells = that level's codes; colour by code id or by frequency across stored samples.
+  - `LevelDetail`: step type, logits shape, wall time, codebook usage over the whole batch, input-latent stats, top-codes bar chart, raw code indices, decoded text after the level.
+  - `LevelSeries`: utilisation, entropy and latent cosine across levels.
+  - `TextLadder`: all per-level decodes plus the final output.
+- `features/timeline/TimelineBar.tsx`, `pages/Timeline.tsx`: time axis (checkpoint load toggle), stage table, stage inspector with a deep link `/concepts?id=…&level=k`, time-per-level chart.
+- `pages/ConceptExplorer.tsx`: sample stepper, colour-mode toggle, `?level=` deep link.
+- Playground "Outputs" panel links to `concepts →` / `timeline →` for the finished run.
+
+**Labelling (no fabricated intermediates)**
+- Per-level text is labelled as official `decode_multiscales` (decoder argmax on the cumulative latent after level k), distinct from the final output.
+- For XSum the page states that the final output uses the official `pick_tokens` repetition penalties.
+- Latent statistics state their sample count (first `latent_samples`); codebook statistics state they are batch-wide.
+
+**Fixes**
+- Grids without a column template below `xl` sized their implicit column to max-content (a 3005 px panel): added `grid-cols-1` (`minmax(0,1fr)`) to every responsive grid.
+- **Test isolation bug:** module-scoped fixtures in `test_ncm_runner_real.py` built their app before the function-scoped autouse fixture set `NCM_DB_PATH`, so two real-model test runs had been written to `results/playground.sqlite`.
+  - `conftest.py` now sets the variable in `pytest_configure`; verified the row count stays at 4 across a full run.
+  - The two test-created rows (`552dba8d…`, `aaff517f…`) were deleted.
+
+- Lint cleanup: per-experiment view state is reset by keying `ConceptBody` by experiment id (no setState-in-effect); `useExperimentTrace` keys fetched results by id and derives `loading`. `oxlint` reports 0 warnings outside the generated shadcn files.
+
+**Verification**
+- `tsc -b` clean; `vitest` 5 passed; `vite build` OK; backend `pytest -q` 42 passed.
+- In-app browser:
+  - Concept Explorer on the TinyStories seed-42 run (12 rows, 641 codes; level 6 via `?level=6` shows logits `[4, 52, 4096]`, 190/4096 unique, 7.52 bits, cos 0.605).
+  - Timeline on the XSum run (load 6.41 s hidden by default; 9 level steps of ~0.2 s; decode 32.8 ms; stage inspector and deep link).
+  - Both fit 375 px with no horizontal overflow.
+
+**Next: Milestone 9.** Autoregressive baseline runner and the Model Comparison page.

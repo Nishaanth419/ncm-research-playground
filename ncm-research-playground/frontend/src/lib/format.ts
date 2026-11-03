@@ -1,5 +1,6 @@
 export function fmtSeconds(s: number | null | undefined): string {
   if (s === null || s === undefined || Number.isNaN(s)) return '—'
+  if (s === 0) return '0'
   if (s < 1) return `${(s * 1000).toFixed(s < 0.01 ? 2 : 1)} ms`
   return `${s.toFixed(2)} s`
 }

@@ -1,5 +1,6 @@
 import { Dices, FlaskConical, Loader2, Play } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 
 import { EmptyState, KV, PageHeader, Panel, StatusDot } from '@/components/common'
 import { Badge } from '@/components/ui/badge'
@@ -49,7 +50,7 @@ export function Playground() {
         title="Playground"
         description="Run real NCM inference with the official checkpoints. Every status update below is an execution event from the backend."
       />
-      <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:p-8">
+      <div className="grid grid-cols-1 gap-6 p-4 sm:p-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:p-8">
         {/* ---------------- configuration ---------------- */}
         <div className="space-y-4">
           <Panel title="Model">
@@ -168,8 +169,16 @@ export function Playground() {
             </p>
           </Panel>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <Panel title="Outputs" meta={record ? `${record.outputs?.length ?? 0} sample(s)` : undefined}>
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+            <Panel
+              title="Outputs"
+              meta={record && experimentId ? (
+                <span className="flex items-center gap-3">
+                  <Link to={`/concepts?id=${experimentId}`} className="text-primary hover:underline">concepts →</Link>
+                  <Link to={`/timeline?id=${experimentId}`} className="text-primary hover:underline">timeline →</Link>
+                </span>
+              ) : undefined}
+            >
               {record?.outputs ? (
                 <div className="space-y-3">
                   {record.outputs.map((o, i) => (
