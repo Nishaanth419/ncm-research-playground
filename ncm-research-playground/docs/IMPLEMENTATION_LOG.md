@@ -163,3 +163,48 @@
   - Output identical to the official item-1 summary.
 
 **Next: Milestone 7.** React + Vite + TypeScript + Tailwind + shadcn/ui workspace shell (sidebar, Overview, Playground), using `/api/models`, `/api/experiments` and the WebSocket.
+
+## Milestone 7: React research workspace (2026-11-03), done
+
+**Stack**
+- Vite 8, React 19, TypeScript 7, Tailwind 4 (`@tailwindcss/vite`).
+- shadcn/ui (base-nova style, Base UI primitives), Zustand 5, react-router 7, Recharts 3 (installed for M8–10), Lucide.
+- shadcn's CLI wired `cn` to a new npm package `cn` (it ships a compiler and a `bin`). I replaced it with the conventional local `clsx` + `tailwind-merge` helper in `src/lib/utils.ts` and uninstalled the package.
+
+**Files** (`frontend/src`)
+- `lib/types.ts` (mirrors the backend Pydantic schemas), `lib/api.ts` (fetch client with error detail, `streamExperiment` WebSocket), `lib/format.ts`.
+- `store/models.ts`: models + health, retried every 3 s while the backend is unreachable.
+- `store/playground.ts`: form, run state machine (idle → submitting → queued → loading-model → running → completed | failed), per-level state driven only by received events. Run state is cleared when switching models.
+- `components/common.tsx` (PageHeader, Panel, StatTile, EmptyState, StatusDot, KV), `components/layout/Sidebar.tsx`.
+- `pages/Overview.tsx`:
+  - checkpoint availability, experiment counts, latency by model (per run and per sample);
+  - latest experiments;
+  - a labelled empty state for benchmarks;
+  - an "ad-hoc runs: not a benchmark" caveat.
+- `pages/Playground.tsx` + `features/playground/{ParamControl,LevelStrip,EventLog}.tsx`:
+  - model selector; free text vs. official test example for XSum/WMT14 (no prompt for TinyStories);
+  - sampling overrides with reset-to-config-default; seed and sample count;
+  - live level strip (cell width ∝ codes per level, one cell per parallel step);
+  - outputs, reference, timing and the raw event stream.
+- `pages/Settings.tsx`; `pages/Placeholder.tsx` for Concept Explorer / Timeline (M8), Comparison (M9), Benchmarks / History (M10), each saying it is not built yet.
+- Theme: an obsidian dark palette in `index.css`; amber = NCM (`--ncm`), sky = autoregressive (`--ar`, reserved for M9); Geist + Geist Mono.
+- `vite.config.ts`: `@` alias; proxies `/api` and the `/api/stream` WebSocket to `NCM_BACKEND_URL` (default `http://127.0.0.1:8000`).
+
+**Backend change**
+- `compute_metrics` now stores `reference` (official test-set reference), so the Playground can show it from the experiment record. The real-model test asserts it for XSum and WMT14.
+
+**Verification**
+- `tsc -b`: clean. `vite build`: OK. `oxlint`: only the generated shadcn fast-refresh warnings.
+- In the in-app browser, against the live backend:
+  - TinyStories, seed 42, 4 samples: outputs **identical** to the official `eval_shard.py` reference; 27 events; the strip fills 12/12.
+  - XSum, official example 0: model-load events shown live; 9/9 levels; summary matches the official item 0; truncation notice shown (article > 512 tokens).
+- Mobile (375 × 812): Overview, Playground, Settings and placeholders have no horizontal overflow (`scrollWidth == innerWidth`), after fixing grid-item `min-width`, the latency table and the KV wrapping.
+- Backend: `pytest -q`, 42 passed.
+
+**Run locally**
+```bash
+cd backend && ../.venv/bin/uvicorn --factory app.main:create_app --port 8000
+cd frontend && npm run dev   # http://localhost:5173
+```
+
+**Next: Milestone 8.** Concept Explorer (level navigation, code-index heatmap, codebook distribution, latent stats, per-level decodes labelled separately from the final penalised decode) and Generation Timeline, both from recorded traces.

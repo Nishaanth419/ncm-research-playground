@@ -60,6 +60,9 @@ def test_conditional_examples_match_official(client, task):
         body = r.json()
         assert body["outputs"][0] == ref["hyps"][i], (task, i)
         assert body["reference"] == ref["refs"][i]
+    eid = client.post("/api/experiments", json={"model": f"ncm-{task}", "example_index": 2}).json()["id"]
+    _stream(client, eid)
+    assert client.get(f"/api/experiments/{eid}/metrics").json()["reference"] == ref["refs"][2]
     tr = client.post("/api/generate", json={"model": f"ncm-{task}", "example_index": 0}).json()["trace"]
     assert tr["levels"][0]["source"] == "transformer"
     assert tr["transformer_passes"] == len(tr["levels"])

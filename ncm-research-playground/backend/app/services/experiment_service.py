@@ -32,6 +32,7 @@ def compute_metrics(resp: GenerateResponse) -> dict[str, Any]:
         "per_level": per_level, "output_words": [len(o.split()) for o in resp.outputs],
         "output_chars": [len(o) for o in resp.outputs], "sampling": resp.sampling.model_dump(),
         "prompt_tokens": resp.prompt_tokens, "prompt_truncated": resp.prompt_truncated,
+        "reference": resp.reference,
     }
 
 
