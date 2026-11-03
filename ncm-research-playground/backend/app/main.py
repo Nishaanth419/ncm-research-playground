@@ -7,8 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import Settings
-from app.routes import experiments, generate, models
+from app.routes import benchmarks, experiments, generate, models
 from app.services.errors import InvalidRequest, ModelNotFound, ModelUnavailable
+from app.services.benchmark import BenchmarkService, BenchmarkStore
 from app.services.event_hub import EventHub
 from app.services.experiment_service import ExperimentService
 from app.services.experiment_store import ExperimentStore
@@ -33,6 +34,9 @@ def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None
         scorer = QualityScorer(device=settings.device)
     store, hub = ExperimentStore(settings.db_path), EventHub()
     service = ExperimentService(runner, store, hub)
+    bench_store = BenchmarkStore(settings.db_path)
+    # shares the experiment worker: benchmarks never overlap other generations
+    bench = BenchmarkService(runner, bench_store, service.executor, settings.device)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -42,6 +46,7 @@ def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None
     app = FastAPI(title="NCM Research Playground", version="0.1.0", lifespan=lifespan)
     app.state.runner, app.state.settings, app.state.scorer = runner, settings, scorer
     app.state.store, app.state.hub, app.state.experiments = store, hub, service
+    app.state.bench_store, app.state.benchmarks = bench_store, bench
     app.add_middleware(CORSMiddleware, allow_origins=list(settings.cors_origins),
                        allow_methods=["*"], allow_headers=["*"])
 
@@ -58,4 +63,5 @@ def create_app(runner: Optional[Any] = None, settings: Optional[Settings] = None
     app.include_router(models.router, prefix="/api")
     app.include_router(generate.router, prefix="/api")
     app.include_router(experiments.router, prefix="/api")
+    app.include_router(benchmarks.router, prefix="/api")
     return app

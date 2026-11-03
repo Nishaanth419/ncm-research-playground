@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
 import { fmtParams, fmtRelative, fmtSeconds } from '@/lib/format'
-import type { ExperimentRecord } from '@/lib/types'
+import type { BenchmarkRecord, ExperimentRecord } from '@/lib/types'
 import { useModels } from '@/store/models'
 
 const LIMIT = 500
@@ -25,6 +25,13 @@ function useExperiments() {
 export function Overview() {
   const { models, status, refresh, device } = useModels()
   const { rows, error, reload } = useExperiments()
+  const [benches, setBenches] = useState<BenchmarkRecord[] | null>(null)
+  useEffect(() => {
+    api.benchmarks(10).then(async (l) => {
+      const done = l.filter((b) => b.status === 'completed').slice(0, 3)
+      setBenches(await Promise.all(done.map((b) => api.benchmark(b.id))))
+    }, () => setBenches([]))
+  }, [])
 
   const latency = useMemo(() => {
     const by = new Map<string, { n: number; total: number; perSample: number }>()
@@ -157,10 +164,31 @@ export function Overview() {
               </div>
             )}
           </Panel>
-          <Panel title="Recent benchmark results" className="xl:col-span-2">
-            <EmptyState icon={BarChart3} title="No benchmark runs">
-              The benchmarking workflow (warm-up, repeats, percentiles) is Milestone 10. Nothing is shown until real runs exist.
-            </EmptyState>
+          <Panel title="Recent benchmark results" meta="median total per run" className="xl:col-span-2" bodyClassName={benches?.length ? 'p-0' : undefined}>
+            {benches && benches.length > 0 ? (
+              <div className="divide-y divide-border">
+                {benches.map((b) => (
+                  <Link key={b.id} to="/benchmarks" className="block px-4 py-2.5 hover:bg-muted/40">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{fmtRelative(b.created_at)} · ×{b.config.repeats} · {String(b.hardware?.device ?? '')}</span>
+                      <span className="font-mono">{b.id.slice(0, 8)}</span>
+                    </div>
+                    <div className="mt-1 space-y-0.5 font-mono text-[0.78rem] tabular">
+                      {(b.summary ?? []).map((g) => (
+                        <div key={`${g.model}-${g.batch_size}`} className="flex justify-between gap-3">
+                          <span className={g.model.startsWith('ar-') ? 'text-ar' : 'text-ncm'}>{g.model} · b{g.batch_size}</span>
+                          <span>{fmtSeconds(g.total_s.median)} <span className="text-muted-foreground">p95 {fmtSeconds(g.total_s.p95)}</span></span>
+                        </div>
+                      ))}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <EmptyState icon={BarChart3} title="No completed benchmarks">
+                Run one in <Link to="/benchmarks" className="text-primary hover:underline">Benchmarks</Link>. Nothing is shown until real runs exist.
+              </EmptyState>
+            )}
           </Panel>
         </div>
       </div>

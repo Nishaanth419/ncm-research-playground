@@ -1,4 +1,6 @@
-import type { ExperimentMetrics, ExperimentRecord, GenEvent, GenerateRequest, ModelInfo, QualityResult, Trace } from './types'
+import type {
+  BenchmarkConfig, BenchmarkRecord, ExperimentMetrics, ExperimentRecord, GenEvent, GenerateRequest, ModelInfo, QualityResult, Trace,
+} from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -41,6 +43,10 @@ export const api = {
   trace: (id: string) => request<Trace>(`/api/experiments/${id}/trace`),
   metrics: (id: string) => request<ExperimentMetrics>(`/api/experiments/${id}/metrics`),
   quality: (id: string) => request<QualityResult>(`/api/experiments/${id}/quality`, { method: 'POST' }),
+  createBenchmark: (body: BenchmarkConfig) =>
+    request<{ id: string; status: string }>('/api/benchmarks', { method: 'POST', body: JSON.stringify(body) }),
+  benchmarks: (limit = 50) => request<BenchmarkRecord[]>(`/api/benchmarks?limit=${limit}`),
+  benchmark: (id: string) => request<BenchmarkRecord>(`/api/benchmarks/${id}`),
 }
 
 /** Subscribe to the real event stream of one experiment. Returns a closer. */
@@ -69,4 +75,10 @@ export async function runExperiment(body: GenerateRequest, onEvent: (e: GenEvent
     })
   })
   return api.experiment(id)
+}
+
+export const csvUrl = {
+  benchmarkRuns: (id: string) => `/api/benchmarks/${id}/runs.csv`,
+  benchmarkSummary: (id: string) => `/api/benchmarks/${id}/summary.csv`,
+  experiments: () => '/api/experiments.csv',
 }

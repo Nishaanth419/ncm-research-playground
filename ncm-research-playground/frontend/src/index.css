@@ -90,6 +90,7 @@
 
 .dark {
     /* obsidian research workspace */
+    color-scheme: dark;
     --background: oklch(0.135 0.004 265);
     --foreground: oklch(0.94 0.004 265);
     --card: oklch(0.163 0.005 265);

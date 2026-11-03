@@ -172,3 +172,69 @@ export interface ExperimentRecord {
   metrics?: ExperimentMetrics | null
   events?: GenEvent[] | null
 }
+
+export interface Stat {
+  n: number
+  median: number | null
+  p90: number | null
+  p95: number | null
+  mean: number | null
+  std: number | null
+  min: number | null
+  max: number | null
+}
+
+export interface BenchmarkGroup {
+  model: string
+  batch_size: number
+  n: number
+  generate_s: Stat
+  total_s: Stat
+  first_output_s: Stat
+  per_sample_s: Stat
+  words_per_s: Stat
+  tokens_per_s: Stat
+  passes: number
+  mean_output_tokens: number
+  memory_peak_bytes: number | null
+}
+
+export interface BenchmarkRun {
+  model: string
+  batch_size: number
+  repeat: number
+  seed: number
+  generate_s: number
+  decode_s: number
+  total_s: number
+  first_output_s: number | null
+  output_tokens: number
+  output_words: number
+  passes: number
+  memory_peak_bytes: number | null
+}
+
+export interface BenchmarkConfig {
+  name: string
+  models: string[]
+  batch_sizes: number[]
+  repeats: number
+  warmup_runs: number
+  seed: number
+  sampling: Partial<SamplingParams>
+}
+
+export interface BenchmarkRecord {
+  id: string
+  created_at: string
+  finished_at: string | null
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  error: string | null
+  name: string
+  config: BenchmarkConfig
+  hardware: Record<string, string | number | null> | null
+  models: Record<string, ModelInfo | null> | null
+  progress: { done: number; total: number; phase: string; model?: string; batch_size?: number; warmup?: number } | null
+  runs?: BenchmarkRun[]
+  summary?: BenchmarkGroup[]
+}

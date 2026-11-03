@@ -308,3 +308,59 @@ cd frontend && npm run dev   # http://localhost:5173
 - Not browser-verified: running the baseline from the Playground page (covered by API tests only).
 
 **Next: Milestone 10.** Benchmark workflow (fixed suite, warm-ups, repeated measurements, median/p90/p95, hardware and config capture, SQLite, CSV export) and Experiment History (reopen and replay).
+
+## Milestone 10: Benchmarking and experiment history (2026-11-03), done
+
+**Backend**
+- `schemas/benchmark.py` `BenchmarkRequest`: 1–4 models, 1–4 batch sizes (1–16), repeats 1–100, warm-ups 0–5, base seed, sampling overrides.
+- `services/benchmark.py`
+  - **Workflow:** for each (model, batch): `warmup_runs` untimed generations, then `repeats` timed runs with seeds `seed+i`. No trace is collected, so instrumentation decodes are not timed.
+    - Runs on the **same single worker as experiments**, so nothing else uses the device during a benchmark.
+  - **Statistics:** `percentile` (linear interpolation, numpy default); `describe` (n, median, p90, p95, mean, sample std, min, max); `summarize` per group: total, generate, first output, per-sample latency, words/s, tokens/s (own tokenizer), passes, mean output tokens, peak memory where the device reports it.
+  - **Recorded context:** `hardware_info` (platform, CPU brand via `sysctl`, core count, RAM, Python/torch/transformers versions, torch threads, device, CUDA device, research-ncm commit, checkpoint revision), plus model metadata from the registry at start.
+  - **Storage:** SQLite tables `benchmarks` and `benchmark_runs` in the same database file; live `progress` (phase, model, batch, done/total).
+- **Endpoints**
+  - `POST /api/benchmarks` (201): validates models; rejects conditional models with 422, since the workload has no prompts.
+  - `GET /api/benchmarks`, `GET /api/benchmarks/{id}` (config, hardware, runs, summary).
+  - `GET /api/benchmarks/{id}/runs.csv`, `/summary.csv`.
+  - `GET /api/experiments.csv`: request, sampling, timings, passes, token/word totals, gen-PPL, outputs.
+
+**Frontend**
+- `pages/Benchmarks.tsx`:
+  - config form (unconditional models, batch chips, repeats, warm-ups, seed, generation count); past-benchmark picker; live progress (1 s polling).
+  - results table (median, p90, p95, per sample, first output, words/s, passes); median ratio between the two families per batch size.
+  - charts with bar = median and whisker = p95 (Recharts `ErrorBar`); hardware and configuration panels; CSV downloads; reading caveats.
+  - `lib/bench.ts` (`chartRows`, `medianRatio`) + 2 vitest tests.
+- `pages/History.tsx`:
+  - search (prompt / output / tag / id), model and status filters, CSV export.
+  - Detail view: request, timings, gen-PPL; links to Concept Explorer / Timeline for traced NCM runs.
+  - **Re-run** submits the identical request as a new experiment (a new measurement).
+  - **Replay** (`features/history/Replay.tsx`) plays back the recorded events at their recorded offsets (0.25×/1×/4×); labelled as playback, nothing is recomputed.
+- Overview "Recent benchmark results" now lists the latest completed benchmarks (median and p95 per group).
+- `Placeholder.tsx` removed: every section is implemented.
+- `color-scheme: dark`, so native scrollbars match the theme.
+
+**Benchmark on this machine** (`58a26ec7…`; Apple M5 Pro, CPU, 6 torch threads; 2 warm-ups + 10 timed runs per cell; checkpoint-default sampling; exported to `results/benchmarks/58a26ec7…-{summary,runs}.csv`)
+
+| model | batch | total median | p90 | p95 | per sample | first output | words/s | passes |
+|---|---|---|---|---|---|---|---|---|
+| ncm-tinystories | 1 | 307.5 ms | 353.9 ms | 399.3 ms | 307.5 ms | 307.5 ms (full text) | 340.6 | 11 |
+| ncm-tinystories | 4 | 733.7 ms | 772.6 ms | 788.8 ms | 183.4 ms | 733.7 ms (full text) | 571.1 | 11 |
+| ar-tinystories-33m | 1 | 436.9 ms | 480.0 ms | 491.3 ms | 436.9 ms | 3.9 ms (1st token) | 239.5 | 128 |
+| ar-tinystories-33m | 4 | 1313.0 ms | 1371.4 ms | 1430.3 ms | 328.2 ms | 10.2 ms (1st token) | 304.7 | 128 |
+
+- The baseline's median total is 1.42× NCM's at batch 1 and 1.79× at batch 4.
+- Quality is not part of the benchmark; see Model Comparison: gen-PPL 13.48 (NCM) vs 9.74 (baseline) on one 4-sample run.
+- Not comparable with the paper's H100 numbers against diffusion models.
+
+**Verification**
+- Backend `pytest -q`: 65 passed.
+  - percentile/describe; workflow (warm-ups excluded, seeds, summary, hardware keys); CSVs; failure path; validation; experiments CSV.
+  - Real 2-model benchmark through the default app.
+- Frontend: `tsc` clean; vitest 13 passed; build OK; oxlint 0 warnings outside the generated shadcn files.
+- In-app browser:
+  - 48-generation benchmark run end to end from the page; table, charts and ratios render.
+  - History: filter, open the XSum run, replay all 21 events (9/9 levels), Re-run, which produced identical outputs with a new timing (1.83 s vs 1.94 s).
+  - Benchmarks, History and Overview have no horizontal overflow at 375 px.
+
+**Next: Milestone 11.** Test, document and polish: top-level README, final pass over error states, a full regression run.
