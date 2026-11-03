@@ -72,6 +72,8 @@ class TraceCollector:
 
     # context management: patch instance attributes only, always restore
     def __enter__(self) -> "TraceCollector":
+        device_sync(self.device)
+        self._t_enter = time.perf_counter()
         self._orig = {"sample": self.net._sample_level, "next": self.vq.get_next_autoregressive_input}
         self.net._sample_level = self._wrap_sample(self._orig["sample"])
         self.vq.get_next_autoregressive_input = self._wrap_next(self._orig["next"])
@@ -109,6 +111,14 @@ class TraceCollector:
         def wrapped(logits: torch.Tensor, *a: Any, **k: Any):
             out = fn(logits, *a, **k)
             device_sync(self.device)
+            if not self.levels:
+                # level 0 predicted by the transformer before the level loop
+                # (predict_level0 / query_level0); timed from entering the
+                # collector, so it includes prefix encoding. No started event:
+                # there is no hook before it.
+                lv = _Level(0, int(out.shape[1]), "transformer")
+                lv.t_start = self._t_enter
+                self.levels.append(lv)
             lv = self.levels[-1]
             lv.seconds = time.perf_counter() - lv.t_start if lv.t_start is not None else None
             lv.codes = out[: self.B].detach().cpu().clone()

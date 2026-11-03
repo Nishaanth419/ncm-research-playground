@@ -120,6 +120,27 @@ def test_events_are_emitted_in_execution_order():
     assert events[-1]["n_codes"] == 4 and "seconds" in events[-1]
 
 
+class FakeNetPredictsL0(FakeNet):
+    """Conditional checkpoints sample level 0 inside generate before the level loop."""
+
+    def generate(self, prefix):
+        B = prefix.shape[0]
+        l0 = self._sample_level(torch.zeros(B, LEVELS[0], VOCAB), 1.0, 0, 1.0)
+        return super().generate(l0)
+
+
+def test_level0_predicted_inside_generate():
+    vq = FakeVQ()
+    net = FakeNetPredictsL0(vq)
+    events = []
+    with TraceCollector(net, vq, batch_size=2, on_event=events.append) as tc:
+        g = net.generate(torch.zeros(2, 5))
+    assert [r.level for r in tc.levels] == [0, 1, 2]
+    assert tc.levels[0].source == "transformer" and tc.levels[0].seconds is not None
+    assert torch.equal(tc.codes_tensor(), g)
+    assert events[0]["type"] == "generation.level_completed" and events[0]["level"] == 0
+
+
 def test_methods_restored_even_on_failure():
     vq = FakeVQ()
     net = FakeNet(vq, fail_at=1)

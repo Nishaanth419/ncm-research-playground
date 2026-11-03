@@ -91,3 +91,42 @@
 - `cd backend && ../.venv/bin/pytest -q`: 11 passed.
 
 **Next: Milestone 5.** FastAPI `NCMRunner` (lazy-load bundles, keep them in memory; unconditional TinyStories plus prompt-driven XSum/WMT14 using `eval_shard.py`'s prefix and `pick_tokens` final decoding) and `/api/generate`, `/api/models`.
+
+## Milestone 5: FastAPI model runner (2026-11-03), done
+
+**Files**
+- `backend/app/main.py`: `create_app(runner=None, settings=None)`.
+  - Error mapping: `ModelNotFound` → 404, `InvalidRequest` → 422, `ModelUnavailable` → 503.
+  - CORS for the Vite dev server; `/api/health`.
+- `backend/app/core/config.py`: `NCM_DEVICE` (default `cpu`), `NCM_CORS_ORIGINS`, `NCM_LOG_LEVEL`.
+- `backend/app/core/official.py`: compiles `pick_tokens` **verbatim from** `research-ncm/scripts/eval_shard.py` (via `ast`), so the final-decode penalties are the official code, not a copy.
+- `backend/app/services/ncm_runner.py`: `NCMRunner`.
+  - Registry: `ncm-tinystories`, `ncm-xsum`, `ncm-wmt14`.
+  - Bundles load lazily on first use and stay in memory; one load lock and one inference lock.
+  - Input handling follows `eval_shard.py`:
+    - level-0 unigram draw for the unconditional model;
+    - for conditional models, a text prompt is tokenized with the config's `pre_tokenizer.model_id`, then truncated/padded to `prefix_len`;
+    - `example_index` uses the official test-set item as-is and returns its reference.
+  - Returns outputs, resolved sampling settings, prompt token count and truncation flag, device-synchronised timing (load / generate / decode), and the optional trace.
+- `backend/app/schemas/generation.py`: `ModelInfo`, `GenerateRequest` (validated ranges; prompt XOR example_index), `GenerateResponse`, `Timing`, `SamplingParams`.
+- `backend/app/routes/{models,generate}.py`: `GET /api/models`, `POST /api/generate` (sync handler, runs in a worker thread).
+- Trace collector fix: XSum (`query_level0`) and WMT14 (`predict_level0`) sample level 0 inside `generate` before any level hook.
+  - The collector now records that as a transformer level 0, timed from entering the collector (so it includes prefix encoding).
+  - No `level_started` event is emitted for it, since no real hook precedes it.
+
+**Verification**
+- `pytest -m "not model"`: 24 passed (API contracts with a fake runner, official-helper tests, trace tests).
+- `pytest -m model`: 7 passed. **The runner's outputs equal the official `eval_shard.py` outputs exactly:**
+  - TinyStories, seed 42, 4 samples;
+  - XSum test items 0–3;
+  - WMT14 test items 0–3.
+  - The references are in `results/official_eval/smoke/*_n4.pkl`, regenerated with `experiments/run_official.py`.
+- Live server (`uvicorn --factory app.main:create_app`):
+  - WMT14 "Ich trinke gern Kaffee am Morgen." → "I like like coffee in the morning." (load 5.75 s, generate 0.38 s, decode 0.02 s);
+  - a TinyStories prompt is rejected with 422.
+
+**Notes**
+- XSum's level schedule starts at 4 codes (`[4, 6, 10, 14, ...]`), so its level 0 is 4 transformer-predicted codes.
+- Per-level decodes in the trace use the official `decode_multiscales` (argmax). Final outputs use `pick_tokens`, which applies penalties for XSum. The UI must label these separately.
+
+**Next: Milestone 6.** WebSocket streaming of real `generation.*` events (`WS /api/stream/{id}`), with experiment records (`POST /api/experiments`, `GET /api/experiments/{id}[/trace|/metrics]`) in SQLite.
