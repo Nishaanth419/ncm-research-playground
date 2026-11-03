@@ -25,7 +25,7 @@ from app.core.official import official_pick_tokens, parse_adjacency
 from app.core.research import RESEARCH_ROOT, NCMBundle, config_path, load_bundle, missing_files
 from app.schemas.generation import GenerateRequest, GenerateResponse, ModelInfo, SamplingParams, Timing
 from app.services.errors import InvalidRequest, ModelNotFound, ModelUnavailable
-from app.services.trace_collector import TraceCollector, device_sync
+from app.services.trace_collector import EventFn, TraceCollector, device_sync
 
 log = logging.getLogger("ncm.runner")
 
@@ -106,7 +106,7 @@ class NCMRunner:
             self._examples[task] = (items, refs)
         return self._examples[task]
 
-    def bundle(self, model_id: str) -> tuple[NCMBundle, float]:
+    def bundle(self, model_id: str, on_event: Optional[EventFn] = None) -> tuple[NCMBundle, float]:
         spec = self._spec(model_id)
         with self._load_lock:
             if model_id in self._bundles:
@@ -114,6 +114,8 @@ class NCMRunner:
             missing = missing_files(spec.task)
             if missing:
                 raise ModelUnavailable(f"{model_id}: checkpoint files missing: {missing}")
+            if on_event:
+                on_event({"type": "model.loading", "model": model_id, "device": self.device})
             t = time.perf_counter()
             try:
                 b = load_bundle(spec.task, self.device)
@@ -123,6 +125,8 @@ class NCMRunner:
             dt = time.perf_counter() - t
             self._bundles[model_id] = b
             log.info("loaded model=%s device=%s seconds=%.2f", model_id, self.device, dt)
+            if on_event:
+                on_event({"type": "model.loaded", "model": model_id, "seconds": dt})
             return b, dt
 
     # ---- generation -----------------------------------------------------
@@ -170,12 +174,14 @@ class NCMRunner:
             adj=parse_adjacency(str(G.get("adjacency_penalty", "") or "")),
             allow=allow.to(self.device).double() if allow is not None else None)
 
-    def generate(self, req: GenerateRequest) -> GenerateResponse:
+    def generate(self, req: GenerateRequest, on_event: Optional[EventFn] = None) -> GenerateResponse:
+        """on_event receives real execution events (model.loading/loaded,
+        generation.level_started/level_completed) as they happen."""
         spec = self._spec(req.model)
         conditional = spec.prompt_kind != "none"
         if not conditional and (req.prompt is not None or req.example_index is not None):
             raise InvalidRequest(f"{spec.id} is unconditional and takes no prompt or example_index")
-        b, load_s = self.bundle(req.model)
+        b, load_s = self.bundle(req.model, on_event)
         d = self._defaults(b.cfg)
         o = req.sampling
         sp = SamplingParams(
@@ -198,7 +204,7 @@ class NCMRunner:
                 L0_P = b.resolve(b.cfg.generation.get("level0_unigram"))
                 l0 = (torch.multinomial(L0_P.float().cpu(), B * b.levels[0], replacement=True)
                       .view(B, b.levels[0]).to(self.device) if L0_P is not None else None)
-            tc = TraceCollector(net, vq, batch_size=B, device=self.device)
+            tc = TraceCollector(net, vq, batch_size=B, device=self.device, on_event=on_event)
             with torch.no_grad():
                 device_sync(self.device)
                 t0 = time.perf_counter()

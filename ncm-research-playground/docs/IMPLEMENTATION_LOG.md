@@ -130,3 +130,36 @@
 - Per-level decodes in the trace use the official `decode_multiscales` (argmax). Final outputs use `pick_tokens`, which applies penalties for XSum. The UI must label these separately.
 
 **Next: Milestone 6.** WebSocket streaming of real `generation.*` events (`WS /api/stream/{id}`), with experiment records (`POST /api/experiments`, `GET /api/experiments/{id}[/trace|/metrics]`) in SQLite.
+
+## Milestone 6: WebSocket streaming and experiment records (2026-11-03), done
+
+**Files**
+- `backend/app/services/experiment_store.py`: `ExperimentStore`, stdlib `sqlite3` with JSON columns.
+  - Columns: request, outputs, timing, trace, metrics, events.
+  - Default database `results/playground.sqlite` (gitignored); override with `NCM_DB_PATH`.
+- `backend/app/services/event_hub.py`: thread → asyncio fan-out.
+  - A late subscriber gets the full backlog, then live events, with no gaps (copy and registration happen under one lock).
+- `backend/app/services/experiment_service.py`: `ExperimentService`.
+  - A single worker thread, so requests queue (inference is serialised anyway).
+  - Event order: `generation.started` → (`model.loading`/`model.loaded` if the model is cold) → real `generation.level_*` from `TraceCollector` → `generation.completed` | `generation.failed`.
+  - Each event carries `experiment_id`, `seq` and `t` (seconds since start).
+  - `compute_metrics`: timing, passes, per-level seconds/unique/entropy, output words/chars, sampling, prompt tokens.
+- `backend/app/routes/experiments.py`:
+  - `POST /api/experiments` (201, returns `stream_url`)
+  - `GET /api/experiments` (newest first, limit/offset)
+  - `GET /api/experiments/{id}`
+  - `GET /api/experiments/{id}/trace`
+  - `GET /api/experiments/{id}/metrics`
+  - `WS /api/stream/{id}`: live, or replayed from the database with `replay: true` when the run is not in memory; close code 4404 for an unknown id.
+- `NCMRunner.generate(req, on_event=None)` and `bundle(...)` now emit model-load events and pass `on_event` to `TraceCollector`.
+- `backend/tests/conftest.py`: every test uses a temporary database.
+
+**Verification**
+- `pytest -q`: 42 passed.
+  - New: store round trip and reopen; hub replay plus live ordering across threads; experiment API (create, stream, fetch, metrics, failure path, database replay, 404/4404, validation).
+  - Real-model stream (TinyStories seed 42): 27 events in order; final outputs equal the official `eval_shard.py` outputs; the second run emits no `model.loading`.
+- Live uvicorn + `websockets` client, XSum test item 1:
+  - 21 events; load 6.06 s; 9 transformer passes at ~0.093 s each (roughly flat: the 512-token article prefix dominates attention cost); generate 0.857 s.
+  - Output identical to the official item-1 summary.
+
+**Next: Milestone 7.** React + Vite + TypeScript + Tailwind + shadcn/ui workspace shell (sidebar, Overview, Playground), using `/api/models`, `/api/experiments` and the WebSocket.

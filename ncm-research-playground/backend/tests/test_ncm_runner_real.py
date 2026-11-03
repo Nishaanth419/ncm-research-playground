@@ -75,6 +75,40 @@ def test_wmt14_free_text_prompt(client):
     assert body["outputs"][0].strip() and body["prompt_tokens"] > 0 and body["prompt_truncated"] is False
 
 
+def _stream(client, eid):
+    from starlette.websockets import WebSocketDisconnect
+    events = []
+    with client.websocket_connect(f"/api/stream/{eid}") as ws:
+        while True:
+            try:
+                events.append(ws.receive_json())
+            except WebSocketDisconnect:
+                return events
+
+
+def test_experiment_streams_real_level_events():
+    ref = official("tinystories")
+    with TestClient(create_app(runner=NCMRunner("cpu"))) as c:  # fresh runner: model not loaded yet
+        eid = c.post("/api/experiments", json={"model": "ncm-tinystories", "num_samples": 4, "seed": 42}).json()["id"]
+        events = _stream(c, eid)
+        types = [e["type"] for e in events]
+        assert types[:4] == ["generation.started", "model.loading", "model.loaded", "generation.level_completed"]
+        assert types[4:-1] == ["generation.level_started", "generation.level_completed"] * 11
+        assert types[-1] == "generation.completed" and events[-1]["outputs"] == ref["hyps"][:4]
+        ts = [e["t"] for e in events]
+        assert ts == sorted(ts)
+        assert [e["level"] for e in events if e["type"] == "generation.level_completed"] == list(range(12))
+
+        rec = c.get(f"/api/experiments/{eid}").json()
+        assert rec["status"] == "completed" and len(rec["events"]) == len(events)
+        assert len(c.get(f"/api/experiments/{eid}/trace").json()["levels"]) == 12
+        m = c.get(f"/api/experiments/{eid}/metrics").json()
+        assert len(m["per_level"]) == 12 and m["transformer_passes"] == 11
+
+        eid2 = c.post("/api/experiments", json={"model": "ncm-tinystories", "seed": 1}).json()["id"]
+        assert "model.loading" not in [e["type"] for e in _stream(c, eid2)]  # kept in memory
+
+
 def test_prompt_rejected_for_unconditional(client):
     r = client.post("/api/generate", json={"model": "ncm-tinystories", "prompt": "Once upon"})
     assert r.status_code == 422
