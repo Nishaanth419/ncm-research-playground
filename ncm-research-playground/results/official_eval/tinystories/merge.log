@@ -1,0 +1,16 @@
+[run_official] scripts/eval_merge.py on cpu (cuda requests remapped)
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+W1103 13:25:36.650000 27024 torch/distributed/elastic/multiprocessing/redirects.py:35] NOTE: Redirects are currently not supported in MacOs.
+
+merged 1 shards -> 1280 tinystories outputs
+
+Loading weights:   0%|          | 0/436 [00:00<?, ?it/s]Loading weights: 100%|██████████| 436/436 [00:00<00:00, 10474.53it/s]
+ seed   genPPL  entropy
+   42    15.88   3.9639
+    0    16.90   3.9763
+    1    15.74   3.9669
+    2    16.56   3.9632
+    3    16.10   3.9671
+
+ mean    16.23   3.9674   (+/- 0.48 over 5 seeds, 1280 samples)
+.venv/bin/python experiments/run_official.py scripts/eval_merge.py --config    412.86s user 74.22s system 43% cpu 18:37.42 total

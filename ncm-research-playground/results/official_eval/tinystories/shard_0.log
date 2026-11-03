@@ -1,0 +1,12 @@
+[run_official] scripts/eval_shard.py on cpu (cuda requests remapped)
+VQVAE, Total parameter count: 36.43M
+VQVAE, Non embedding parameter count: 33.24M
+NCP Transformer, Total parameter count: 88.61M
+NCP Transformer, Non embedding parameter count: 88.30M
+  shard0 seed 42: 256 samples
+  shard0 seed 0: 256 samples
+  shard0 seed 1: 256 samples
+  shard0 seed 2: 256 samples
+  shard0 seed 3: 256 samples
+shard 0: 1280 -> /Users/nishaanth/Desktop/NCM/ncm-research-playground/results/official_eval/tinystories/shard_0.pkl
+.venv/bin/python experiments/run_official.py scripts/eval_shard.py --config    806.17s user 50.18s system 324% cpu 4:23.86 total

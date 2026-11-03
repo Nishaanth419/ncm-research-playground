@@ -1,0 +1,4 @@
+[run_official] scripts/eval_shard.py on cpu (cuda requests remapped)
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+  shard0 0/4
+shard 0: 4 -> /Users/nishaanth/Desktop/NCM/ncm-research-playground/results/official_eval/smoke/xsum_n4.pkl
