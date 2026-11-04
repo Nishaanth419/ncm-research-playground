@@ -102,6 +102,12 @@ Security note: the NCM checkpoints are Python pickles, loaded by the official co
 ## Run
 
 ```bash
+./run.sh    # starts both; Ctrl+C stops both. BACKEND_PORT / FRONTEND_PORT override 8000 / 5173
+```
+
+Or separately:
+
+```bash
 cd backend && ../.venv/bin/uvicorn --factory app.main:create_app --host 127.0.0.1 --port 8000
 ```
 
