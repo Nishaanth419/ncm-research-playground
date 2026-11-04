@@ -219,7 +219,8 @@ cd frontend && npm run dev
 
 ### Things to try first
 
-0. **How NCM works → Play.** An animated walk-through of a real run: NCM fills the whole canvas in 11 passes while a traditional model needs 128, then the story sharpens level by level.
+0. **Learn NCM**, if you are new to it: a plain-language guide with the paper, our findings and videos.
+1. **How NCM works → Play.** An animated walk-through of a real run: NCM fills the whole canvas in 11 passes while a traditional model needs 128, then the story sharpens level by level.
 1. **Playground → `ncm-tinystories` → Generate.** Watch the 12 level cells fill as real events arrive. The first run also loads the checkpoint (a few seconds).
 2. Click **concepts →** on the result to open the **Concept Explorer**. Click any level to see its codes and the text decoded at that point.
 3. **Playground → `ncm-xsum` → Official test example → Generate** for a news summary, with the human reference shown next to it.
