@@ -6,6 +6,7 @@ import {
   GitCompareArrows,
   History,
   LayoutGrid,
+  PlayCircle,
   Settings,
   type LucideIcon,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ type Item = { to: string; label: string; icon: LucideIcon }
 const GROUPS: { label: string; items: Item[] }[] = [
   { label: 'Workspace', items: [
     { to: '/', label: 'Overview', icon: LayoutGrid },
+    { to: '/how-it-works', label: 'How NCM works', icon: PlayCircle },
     { to: '/playground', label: 'Playground', icon: FlaskConical },
   ] },
   { label: 'Analysis', items: [

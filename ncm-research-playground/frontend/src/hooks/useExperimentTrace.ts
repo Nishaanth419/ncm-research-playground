@@ -17,17 +17,21 @@ interface Loaded {
 
 /**
  * The experiment selected by `?id=`; without one, the most recent completed
- * experiment that recorded a trace. Loads its record (incl. events) and trace.
+ * experiment that recorded a trace (and passes `filter`, if given). Loads its
+ * record (incl. events) and trace.
  */
-export function useExperimentTrace() {
+export function useExperimentTrace(filter?: (r: ExperimentRecord) => boolean) {
   const [params, setParams] = useSearchParams()
   const [candidates, setCandidates] = useState<ExperimentRecord[] | null>(null)
   const [listError, setListError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
 
+  const [reloads, setReloads] = useState(0)
   useEffect(() => {
-    api.experiments(100).then((rows) => setCandidates(rows.filter(traced)), (e: Error) => setListError(e.message))
-  }, [])
+    api.experiments(100).then((rows) => setCandidates(rows.filter((r) => traced(r) && (!filter || filter(r)))), (e: Error) => setListError(e.message))
+    // filter is expected to be a stable (module-level) function
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloads])
 
   const selected = params.get('id') ?? candidates?.[0]?.id ?? null
 
@@ -50,5 +54,6 @@ export function useExperimentTrace() {
     error: listError ?? current?.error ?? null,
     loading: !!selected && !current,
     select: (next: string) => setParams((p) => { p.set('id', next); return p }),
+    reload: () => setReloads((n) => n + 1),
   }
 }
