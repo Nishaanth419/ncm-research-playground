@@ -169,4 +169,4 @@ Interactive docs: http://127.0.0.1:8000/docs.
 - **NFE:** the paper lists 12 for TinyStories; the app counts 11 transformer passes plus the level-0 unigram draw.
 - **Single worker:** generations and benchmarks run one at a time. Runs interrupted by a server restart are marked failed at startup.
 
-See `docs/ASSESSMENT.md` for the architecture study and `docs/IMPLEMENTATION_LOG.md` for every milestone's commands, results and issues.
+See `docs/EXPERIMENTS.md` for the datasets, every experiment and its results, `docs/ASSESSMENT.md` for the architecture study and `docs/IMPLEMENTATION_LOG.md` for every milestone's commands, results and issues.
