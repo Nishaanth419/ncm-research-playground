@@ -8,6 +8,7 @@ Everything shown in the app comes from real execution: real checkpoints, real ge
 
 | Section | What it shows |
 |---|---|
+| **Learn NCM** | A beginner's guide: what NCM is, the key ideas in plain words, what the paper claims (with links), what we found running it, curated YouTube explainers and a glossary. |
 | **How NCM works** | An animated explainer played back from a real recorded TinyStories run: one token per pass vs. one level per pass, the code hierarchy filling in coarse to fine with the text decoded after each level, and which part of the model does what. |
 | **Playground** | Run NCM TinyStories (unconditional), XSum (article → summary) or WMT14 (German → English), or the TinyStories-33M baseline. Live level-by-level progress from WebSocket events. |
 | **Concept Explorer** | The discrete code hierarchy of a run: one row per level, colour by code id or frequency, per-level codebook statistics, input-latent statistics, and the official per-level decodes. |
