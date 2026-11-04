@@ -190,7 +190,18 @@ You should see two short stories and the level-by-level decodes.
 
 ## Run
 
-Open **two terminals** in `ncm-research-playground/ncm-research-playground`.
+From `ncm-research-playground/ncm-research-playground`, start both servers with one command:
+
+```bash
+./run.sh
+```
+
+It checks that setup is done and that ports 8000 and 5173 are free, then starts the backend and the frontend together. Their logs are interleaved and tagged `[backend]` / `[frontend]`. **Ctrl+C stops both**, and if either one crashes the other is stopped too. Settings such as `NCM_DEVICE=cuda ./run.sh` pass through. You can move the ports with `BACKEND_PORT=8010 FRONTEND_PORT=5180 ./run.sh`.
+
+Then open **http://localhost:5173**. The backend's interactive API docs are at http://127.0.0.1:8000/docs.
+
+<details>
+<summary>Or start them separately, in two terminals</summary>
 
 Terminal 1, the backend:
 
@@ -204,10 +215,11 @@ Terminal 2, the frontend:
 cd frontend && npm run dev
 ```
 
-Then open **http://localhost:5173**. The backend's interactive API docs are at http://127.0.0.1:8000/docs.
+</details>
 
 ### Things to try first
 
+0. **How NCM works → Play.** An animated walk-through of a real run: NCM fills the whole canvas in 11 passes while a traditional model needs 128, then the story sharpens level by level.
 1. **Playground → `ncm-tinystories` → Generate.** Watch the 12 level cells fill as real events arrive. The first run also loads the checkpoint (a few seconds).
 2. Click **concepts →** on the result to open the **Concept Explorer**. Click any level to see its codes and the text decoded at that point.
 3. **Playground → `ncm-xsum` → Official test example → Generate** for a news summary, with the human reference shown next to it.

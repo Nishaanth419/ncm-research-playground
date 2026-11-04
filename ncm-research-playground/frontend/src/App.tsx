@@ -6,6 +6,7 @@ import { Benchmarks } from '@/pages/Benchmarks'
 import { Comparison } from '@/pages/Comparison'
 import { ConceptExplorer } from '@/pages/ConceptExplorer'
 import { History } from '@/pages/History'
+import { HowItWorks } from '@/pages/HowItWorks'
 import { Overview } from '@/pages/Overview'
 import { Playground } from '@/pages/Playground'
 import { SettingsPage } from '@/pages/Settings'
@@ -31,6 +32,7 @@ export default function App() {
       <main className="min-w-0 flex-1">
         <Routes>
           <Route path="/" element={<Overview />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/concepts" element={<ConceptExplorer />} />
           <Route path="/timeline" element={<Timeline />} />
