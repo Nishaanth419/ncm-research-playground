@@ -3,7 +3,7 @@ title: "Next-Concept Modeling: I Ran Stanford's New Text Generator Against a Cla
 published: false
 description: "How NCM writes text coarse to fine in 11 steps instead of 128, what the paper claims, what I measured on a laptop, and whether it will replace LLMs."
 tags: machinelearning, ai, llm, research
-cover_image: https://raw.githubusercontent.com/Nishaanth419/ncm-research-playground/main/blog/images/01-sequential-passes.png
+cover_image: https://raw.githubusercontent.com/Nishaanth419/ncm-research-playground/main/blog/images/cover.png
 canonical_url:
 ---
 
